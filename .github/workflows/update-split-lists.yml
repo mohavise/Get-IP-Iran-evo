@@ -65,14 +65,32 @@ jobs:
           validate_list list-ipv4.rsc NoNAT 1000
           validate_list list-ipv6.rsc IRv6 100
 
+      - name: Generate and verify checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          sha256sum list-ipv4.rsc > list-ipv4-checksum.sha256
+          sha256sum list-ipv6.rsc > list-ipv6-checksum.sha256
+
+          sha256sum --check list-ipv4-checksum.sha256
+          sha256sum --check list-ipv6-checksum.sha256
+
+          test "$(wc -l < list-ipv4-checksum.sha256)" -eq 1
+          test "$(wc -l < list-ipv6-checksum.sha256)" -eq 1
+
       - name: Commit changes
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git add list-ipv4.rsc list-ipv6.rsc
+          git add \
+            list-ipv4.rsc \
+            list-ipv6.rsc \
+            list-ipv4-checksum.sha256 \
+            list-ipv6-checksum.sha256
 
           if git diff --cached --quiet; then
-            echo "No IP list changes"
+            echo "No IP list or checksum changes"
           else
             git commit -m "Automatic split IP list update"
             git push
