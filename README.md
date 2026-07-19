@@ -2,16 +2,24 @@
 
 Generate and safely update Iran IPv4 and IPv6 address lists for MikroTik RouterOS.
 
-## Data Source
+## Data Sources
 
-The lists are generated from RIPEstat:
+The primary lists are generated from RIPEstat:
 
 ```text
 https://stat.ripe.net/data/country-resource-list/data.json?resource=IR&v4_format=prefix
 ```
 
+Some active Iranian prefixes can be absent from that country-resource dataset because it is derived from RIR statistics rather than every later reassignment or routed sub-prefix. Confirmed omissions are maintained in:
+
 ```text
-RIPEstat
+data/ipv4-supplements.txt
+```
+
+Every supplemental prefix must be supported by current registry and routing evidence. GitHub Actions validates the supplemental file and confirms every entry is included in the generated IPv4 output.
+
+```text
+RIPEstat + reviewed IPv4 supplements
 → scripts/get.sh
 → repository validation
 → list-ipv4.rsc / list-ipv6.rsc
@@ -24,6 +32,7 @@ RIPEstat
 | --- | --- |
 | `list-ipv4.rsc` | Iran IPv4 prefixes in `NoNAT` |
 | `list-ipv6.rsc` | Iran IPv6 prefixes in `IRv6` |
+| `data/ipv4-supplements.txt` | Reviewed Iranian IPv4 prefixes omitted by the primary source |
 
 ## Repository Validation
 
@@ -35,6 +44,8 @@ GitHub Actions validates generated data before publishing it:
 - correct IP family
 - duplicate detection
 - correct RouterOS address-list names
+- valid and unique supplemental IPv4 CIDRs
+- confirmation that every supplemental CIDR appears in `list-ipv4.rsc`
 - protection against a sudden count reduction greater than 20%
 
 If validation fails, the current published files remain unchanged.
