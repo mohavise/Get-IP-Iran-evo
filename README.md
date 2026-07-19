@@ -1,43 +1,107 @@
 # Get IP Iran Evo for MikroTik
 
-This repository creates MikroTik address-list files for Iran IP ranges and provides safer updater scripts for RouterOS.
+Generate and safely update Iran IPv4 and IPv6 address lists for MikroTik RouterOS.
 
-The project now separates IPv4 and IPv6, and also separates the update method for small routers and medium/large routers.
+## Data Source
 
-## IP Data Source
-
-The IP ranges are generated from RIPEstat country resource data for Iran:
+The lists are generated from RIPEstat:
 
 ```text
 https://stat.ripe.net/data/country-resource-list/data.json?resource=IR&v4_format=prefix
 ```
 
-The repository may still appear on GitHub as a fork of `MrAriaNet/Get-IP-Iran`, but the automatic update workflow does not fetch data or code from that repository.
-
-Current update path:
+Update path:
 
 ```text
-RIPEstat -> scripts/get.sh -> list-ipv4.rsc / list-ipv6.rsc
+RIPEstat
+→ scripts/get.sh
+→ repository validation
+→ list-ipv4.rsc / list-ipv6.rsc
+→ SHA-256 checksum files
+→ MikroTik updater
 ```
 
-The old upstream sync workflow was removed on purpose, so the generated IP lists are updated only from the source API used by `scripts/get.sh`.
+## Published Files
 
-## Address Lists
+| File | Purpose |
+| --- | --- |
+| `list-ipv4.rsc` | Iran IPv4 prefixes in the `NoNAT` address list |
+| `list-ipv6.rsc` | Iran IPv6 prefixes in the `IRv6` address list |
+| `list-ipv4-checksum.sha256` | SHA-256 checksum for `list-ipv4.rsc` |
+| `list-ipv6-checksum.sha256` | SHA-256 checksum for `list-ipv6.rsc` |
 
-| File | RouterOS address list | Purpose |
+## Repository Validation
+
+The GitHub workflow validates generated data before publishing it.
+
+Checks include:
+
+- RIPEstat request success and API status
+- minimum source-prefix counts
+- valid IPv4 and IPv6 CIDR networks
+- correct IP family in each list
+- duplicate-network detection
+- correct RouterOS address-list names
+- protection against a sudden entry-count reduction greater than 20%
+- SHA-256 checksum generation and verification
+
+If any check fails, the workflow stops and the current published files remain unchanged.
+
+Current minimums:
+
+| List | Minimum entries |
+| --- | ---: |
+| IPv4 `NoNAT` | 1,000 |
+| IPv6 `IRv6` | 100 |
+
+## MikroTik Safety Logic
+
+Data-quality validation is performed in the repository. The MikroTik updater only performs operational safety checks.
+
+```text
+Download list
+→ RouterOS dry-run import
+→ Backup current address list
+→ Import new list
+→ Verify minimum entry count
+→ Restore backup if import or minimum check fails
+→ Remove temporary files
+```
+
+The router minimum checks are:
+
+| Address list | Minimum entries |
+| --- | ---: |
+| `NoNAT` | 1,000 |
+| `IRv6` | 100 |
+
+The MikroTik updater does not perform file-size, CIDR, duplicate, IP-family, or SHA-256 validation. Those checks are handled before publication by GitHub Actions.
+
+## Choose an Updater
+
+### Small routers
+
+Small-router scripts keep the backup in a temporary RouterOS address list.
+
+| Protocol | Updater | Temporary backup list |
 | --- | --- | --- |
-| `list-ipv4.rsc` | `NoNAT` | Iran IPv4 prefixes |
-| `list-ipv6.rsc` | `IRv6` | Iran IPv6 prefixes |
+| IPv4 | `update-iran-ipv4-small-router.rsc` | `NoNAT-backup-before-update` |
+| IPv6 | `update-iran-ipv6-small-router.rsc` | `IRv6-backup-before-update` |
 
-## Which Script Should I Use?
+### Medium and large routers
 
-Use only the scripts you need.
+Medium/large-router scripts use a temporary export file.
 
-### Recommended Safe Install
+| Protocol | Updater | Temporary backup file |
+| --- | --- | --- |
+| IPv4 | `update-iran-ipv4-medium-large-router.rsc` | `nonat-ipv4-backup-before-update.rsc` |
+| IPv6 | `update-iran-ipv6-medium-large-router.rsc` | `irv6-backup-before-update.rsc` |
 
-The safe install scripts fetch the updater and scheduler, import them, remove the temporary files from MikroTik disk, and run the updater once.
+## Recommended Safe Install
 
-IPv4 small router:
+Use only the installer matching your router and protocol.
+
+### IPv4 — small router
 
 ```routeros
 /tool fetch url="https://raw.githubusercontent.com/mohavise/Get-IP-Iran-evo/main/safe-install-iran-ipv4-small-router.rsc" dst-path=safe-install-iran-ipv4-small-router.rsc mode=https
@@ -45,7 +109,7 @@ IPv4 small router:
 /file remove [find name=safe-install-iran-ipv4-small-router.rsc]
 ```
 
-IPv4 medium/large router:
+### IPv4 — medium/large router
 
 ```routeros
 /tool fetch url="https://raw.githubusercontent.com/mohavise/Get-IP-Iran-evo/main/safe-install-iran-ipv4-medium-large-router.rsc" dst-path=safe-install-iran-ipv4-medium-large-router.rsc mode=https
@@ -53,7 +117,7 @@ IPv4 medium/large router:
 /file remove [find name=safe-install-iran-ipv4-medium-large-router.rsc]
 ```
 
-IPv6 small router:
+### IPv6 — small router
 
 ```routeros
 /tool fetch url="https://raw.githubusercontent.com/mohavise/Get-IP-Iran-evo/main/safe-install-iran-ipv6-small-router.rsc" dst-path=safe-install-iran-ipv6-small-router.rsc mode=https
@@ -61,7 +125,7 @@ IPv6 small router:
 /file remove [find name=safe-install-iran-ipv6-small-router.rsc]
 ```
 
-IPv6 medium/large router:
+### IPv6 — medium/large router
 
 ```routeros
 /tool fetch url="https://raw.githubusercontent.com/mohavise/Get-IP-Iran-evo/main/safe-install-iran-ipv6-medium-large-router.rsc" dst-path=safe-install-iran-ipv6-medium-large-router.rsc mode=https
@@ -69,151 +133,52 @@ IPv6 medium/large router:
 /file remove [find name=safe-install-iran-ipv6-medium-large-router.rsc]
 ```
 
-### Manual Install
-### IPv4 Only
+The safe installer installs the matching updater and scheduler, removes temporary installer files, and runs the updater once.
 
-Small router:
+## Manual Updater Installation
 
-```routeros
-/tool fetch url="https://raw.githubusercontent.com/mohavise/Get-IP-Iran-evo/main/update-iran-ipv4-small-router.rsc" dst-path=update-iran-ipv4-small-router.rsc mode=https
-/import file-name=update-iran-ipv4-small-router.rsc
-/system script run update-iran-ipv4-small-router
-```
-
-Medium or large router:
+Example for IPv4 medium/large routers:
 
 ```routeros
 /tool fetch url="https://raw.githubusercontent.com/mohavise/Get-IP-Iran-evo/main/update-iran-ipv4-medium-large-router.rsc" dst-path=update-iran-ipv4-medium-large-router.rsc mode=https
 /import file-name=update-iran-ipv4-medium-large-router.rsc
+/file remove [find name=update-iran-ipv4-medium-large-router.rsc]
 /system script run update-iran-ipv4-medium-large-router
 ```
 
-### IPv6 Only
-
-Small router:
-
-```routeros
-/tool fetch url="https://raw.githubusercontent.com/mohavise/Get-IP-Iran-evo/main/update-iran-ipv6-small-router.rsc" dst-path=update-iran-ipv6-small-router.rsc mode=https
-/import file-name=update-iran-ipv6-small-router.rsc
-/system script run update-iran-ipv6-small-router
-```
-
-Medium or large router:
-
-```routeros
-/tool fetch url="https://raw.githubusercontent.com/mohavise/Get-IP-Iran-evo/main/update-iran-ipv6-medium-large-router.rsc" dst-path=update-iran-ipv6-medium-large-router.rsc mode=https
-/import file-name=update-iran-ipv6-medium-large-router.rsc
-/system script run update-iran-ipv6-medium-large-router
-```
+Replace the filename and script name with the matching IPv4/IPv6 and small/medium-large version when needed.
 
 ## Automatic Router Updates
 
-After importing the updater script, import the matching scheduler file.
+Default scheduler times:
 
-IPv4 small router:
-
-```routeros
-/tool fetch url="https://raw.githubusercontent.com/mohavise/Get-IP-Iran-evo/main/scheduler-update-iran-ipv4-small-router.rsc" dst-path=scheduler-update-iran-ipv4-small-router.rsc mode=https
-/import file-name=scheduler-update-iran-ipv4-small-router.rsc
-```
-
-IPv4 medium/large router:
-
-```routeros
-/tool fetch url="https://raw.githubusercontent.com/mohavise/Get-IP-Iran-evo/main/scheduler-update-iran-ipv4-medium-large-router.rsc" dst-path=scheduler-update-iran-ipv4-medium-large-router.rsc mode=https
-/import file-name=scheduler-update-iran-ipv4-medium-large-router.rsc
-```
-
-IPv6 small router:
-
-```routeros
-/tool fetch url="https://raw.githubusercontent.com/mohavise/Get-IP-Iran-evo/main/scheduler-update-iran-ipv6-small-router.rsc" dst-path=scheduler-update-iran-ipv6-small-router.rsc mode=https
-/import file-name=scheduler-update-iran-ipv6-small-router.rsc
-```
-
-IPv6 medium/large router:
-
-```routeros
-/tool fetch url="https://raw.githubusercontent.com/mohavise/Get-IP-Iran-evo/main/scheduler-update-iran-ipv6-medium-large-router.rsc" dst-path=scheduler-update-iran-ipv6-medium-large-router.rsc mode=https
-/import file-name=scheduler-update-iran-ipv6-medium-large-router.rsc
-```
-
-Default schedule:
-
-| Scheduler | Time |
+| Protocol | Daily time |
 | --- | --- |
-| IPv4 updates | `04:00:00` daily |
-| IPv6 updates | `04:10:00` daily |
+| IPv4 | `04:00:00` |
+| IPv6 | `04:10:00` |
 
-You can change the scheduler time in RouterOS if another time is better for your network.
+You can change the scheduler time in RouterOS.
 
-## Safety Logic
+## Automatic GitHub Updates
 
-The updater scripts are designed to avoid deleting a good old address list when the new download is broken or empty.
-
-Update flow:
-
-```mermaid
-flowchart TD
-    A["Start update"] --> B["Download new list from GitHub"]
-    B --> C{"Download OK?"}
-    C -- "No" --> D["Keep old address list"]
-    C -- "Yes" --> E{"File exists and size is OK?"}
-    E -- "No" --> D
-    E -- "Yes" --> F["Create backup of current address list"]
-    F --> G["Delete current address list"]
-    G --> H["Import new list"]
-    H --> I{"Import OK and list has entries?"}
-    I -- "No" --> J["Restore old address list from backup"]
-    I -- "Yes" --> K["Delete backup and downloaded file"]
-    J --> K
-    K --> L["Finish"]
-```
-
-## Small Router vs Medium/Large Router
-
-### Small Router Scripts
-
-Small router scripts keep the backup inside a temporary address list:
-
-| Script | Temporary backup list |
-| --- | --- |
-| IPv4 small | `NoNAT-backup-before-update` |
-| IPv6 small | `IRv6-backup-before-update` |
-
-This avoids creating a full backup export file on disk, which is better for routers with limited storage.
-
-### Medium/Large Router Scripts
-
-Medium/large router scripts create a temporary backup file on router disk before replacing the list:
-
-| Script | Temporary backup file |
-| --- | --- |
-| IPv4 medium/large | `nonat-ipv4-backup-before-update.rsc` |
-| IPv6 medium/large | `irv6-backup-before-update.rsc` |
-
-This is safer and cleaner for routers with enough RAM, CPU, and disk space.
-
-The updater removes the downloaded file and backup file after a successful or failed update.
-
-## Automatic GitHub List Updates
-
-The repository includes a GitHub Actions workflow:
+Workflow:
 
 ```text
 .github/workflows/update-split-lists.yml
 ```
 
-It runs every day and regenerates:
+It runs daily and can also be started manually from the GitHub Actions tab.
 
-- `list-ipv4.rsc`
-- `list-ipv6.rsc`
+On success it updates all four published files:
 
-You can also run it manually from the GitHub Actions tab.
+```text
+list-ipv4.rsc
+list-ipv6.rsc
+list-ipv4-checksum.sha256
+list-ipv6-checksum.sha256
+```
 
-## Generate Lists Manually
-
-The `scripts/get.sh` script can generate the lists from source data.
+## Manual List Generation
 
 ```bash
 ./scripts/get.sh v4
@@ -221,17 +186,17 @@ The `scripts/get.sh` script can generate the lists from source data.
 ./scripts/get.sh split
 ```
 
-| Command | Output |
+| Command | Result |
 | --- | --- |
-| `./scripts/get.sh v4` | Prints IPv4 MikroTik entries |
-| `./scripts/get.sh v6` | Prints IPv6 MikroTik entries |
-| `./scripts/get.sh split` | Writes `list-ipv4.rsc` and `list-ipv6.rsc` |
+| `./scripts/get.sh v4` | Print the IPv4 RouterOS list |
+| `./scripts/get.sh v6` | Print the IPv6 RouterOS list |
+| `./scripts/get.sh split` | Write both `.rsc` list files |
 
 ## Notes
 
-- IPv4 list name is `NoNAT`.
-- IPv6 list name is `IRv6`.
-- If download fails, the old list stays active.
-- If the downloaded file is empty or too small, the old list stays active.
-- If import fails, the script restores the old list.
-- The scripts require RouterOS permission policy: `read,write,policy,test`.
+- IPv4 RouterOS list name: `NoNAT`
+- IPv6 RouterOS list name: `IRv6`
+- Failed download or dry-run import keeps the old list active.
+- Failed import or minimum-entry check restores the previous list.
+- Temporary downloaded and backup files are removed after the update.
+- Updater scripts require RouterOS policy: `read,write,policy,test`.
