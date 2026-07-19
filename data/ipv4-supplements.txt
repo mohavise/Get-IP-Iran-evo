@@ -1,0 +1,5 @@
+# Verified Iranian IPv4 prefixes omitted by RIPEstat country-resource-list.
+# One CIDR per line. Every entry must have an evidence comment and pass CI validation.
+
+# Mizban Dadeh Roham Co (AS197937), RIPE inetnum country=IR, announced and RPKI-valid.
+185.222.163.0/24
