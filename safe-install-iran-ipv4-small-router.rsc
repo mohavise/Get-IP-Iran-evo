@@ -8,13 +8,33 @@
     :local updateFile "update-iran-ipv4-small-router.rsc"
     :local schedulerFile "scheduler-update-iran-ipv4-small-router.rsc"
 
-    /tool fetch url=$updateUrl dst-path=$updateFile mode=https
-    /import file-name=$updateFile
-    /file remove [find name=$updateFile]
+    :foreach file in={$updateFile;$schedulerFile} do={
+        :if ([:len [/file find name=$file]] > 0) do={ /file remove $file }
+    }
 
-    /tool fetch url=$schedulerUrl dst-path=$schedulerFile mode=https
+    :do { /tool fetch url=$updateUrl dst-path=$updateFile check-certificate=yes-without-crl } on-error={
+        :log error "Iran IPv4 installer: updater download failed"
+        :return
+    }
+    :do { /import file-name=$updateFile verbose=yes dry-run } on-error={
+        :log error "Iran IPv4 installer: updater validation failed"
+        /file remove $updateFile
+        :return
+    }
+    /import file-name=$updateFile
+    /file remove $updateFile
+
+    :do { /tool fetch url=$schedulerUrl dst-path=$schedulerFile check-certificate=yes-without-crl } on-error={
+        :log error "Iran IPv4 installer: scheduler download failed"
+        :return
+    }
+    :do { /import file-name=$schedulerFile verbose=yes dry-run } on-error={
+        :log error "Iran IPv4 installer: scheduler validation failed"
+        /file remove $schedulerFile
+        :return
+    }
     /import file-name=$schedulerFile
-    /file remove [find name=$schedulerFile]
+    /file remove $schedulerFile
 
     /system script run update-iran-ipv4-small-router
 }
