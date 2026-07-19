@@ -24,6 +24,47 @@ jobs:
           chmod +x scripts/get.sh
           ./scripts/get.sh split
 
+      - name: Validate generated lists
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          validate_list() {
+            local file="$1"
+            local list_name="$2"
+            local minimum="$3"
+            local previous_count current_count minimum_allowed
+
+            test -s "$file"
+            grep -q "#Last update:" "$file"
+            grep -q "list=$list_name" "$file"
+
+            current_count=$(grep -c "add address=.* list=$list_name" "$file" || true)
+            if (( current_count < minimum )); then
+              echo "ERROR: $file contains only $current_count entries; minimum is $minimum"
+              exit 1
+            fi
+
+            if grep -Eq '(^|[[:space:]])(null|false)([[:space:]]|$)' "$file"; then
+              echo "ERROR: $file contains invalid values"
+              exit 1
+            fi
+
+            previous_count=$(git show "HEAD:$file" | grep -c "add address=.* list=$list_name" || true)
+            if (( previous_count > 0 )); then
+              minimum_allowed=$((previous_count * 80 / 100))
+              if (( current_count < minimum_allowed )); then
+                echo "ERROR: $file dropped from $previous_count to $current_count entries (>20% reduction)"
+                exit 1
+              fi
+            fi
+
+            echo "$file validated: $current_count entries"
+          }
+
+          validate_list list-ipv4.rsc NoNAT 1000
+          validate_list list-ipv6.rsc IRv6 100
+
       - name: Commit changes
         run: |
           git config user.name "github-actions"
