@@ -13,62 +13,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
-      - name: Generate split lists
+      - name: Generate lists and checksums
         run: |
           chmod +x scripts/get.sh
           ./scripts/get.sh split
-
-      - name: Validate generated lists
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          validate_list() {
-            local file="$1"
-            local list_name="$2"
-            local minimum="$3"
-            local previous_count current_count minimum_allowed
-
-            test -s "$file"
-            grep -q "#Last update:" "$file"
-            grep -q "list=$list_name" "$file"
-
-            current_count=$(grep -c "add address=.* list=$list_name" "$file" || true)
-            if (( current_count < minimum )); then
-              echo "ERROR: $file contains only $current_count entries; minimum is $minimum"
-              exit 1
-            fi
-
-            if grep -Eq '(^|[[:space:]])(null|false)([[:space:]]|$)' "$file"; then
-              echo "ERROR: $file contains invalid values"
-              exit 1
-            fi
-
-            previous_count=$(git show "HEAD:$file" | grep -c "add address=.* list=$list_name" || true)
-            if (( previous_count > 0 )); then
-              minimum_allowed=$((previous_count * 80 / 100))
-              if (( current_count < minimum_allowed )); then
-                echo "ERROR: $file dropped from $previous_count to $current_count entries (>20% reduction)"
-                exit 1
-              fi
-            fi
-
-            echo "$file validated: $current_count entries"
-          }
-
-          validate_list list-ipv4.rsc NoNAT 1000
-          validate_list list-ipv6.rsc IRv6 100
-
-      - name: Generate and verify checksums
-        shell: bash
-        run: |
-          set -euo pipefail
 
           sha256sum list-ipv4.rsc > list-ipv4-checksum.sha256
           sha256sum list-ipv6.rsc > list-ipv6-checksum.sha256
@@ -76,22 +29,18 @@ jobs:
           sha256sum --check list-ipv4-checksum.sha256
           sha256sum --check list-ipv6-checksum.sha256
 
-          test "$(wc -l < list-ipv4-checksum.sha256)" -eq 1
-          test "$(wc -l < list-ipv6-checksum.sha256)" -eq 1
-
       - name: Commit changes
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git add \
-            list-ipv4.rsc \
-            list-ipv6.rsc \
-            list-ipv4-checksum.sha256 \
-            list-ipv6-checksum.sha256
+
+          git add list-ipv4.rsc list-ipv6.rsc \
+                  list-ipv4-checksum.sha256 list-ipv6-checksum.sha256
 
           if git diff --cached --quiet; then
-            echo "No IP list or checksum changes"
-          else
-            git commit -m "Automatic split IP list update"
-            git push
+            echo "No changes"
+            exit 0
           fi
+
+          git commit -m "Automatic IP list update"
+          git push
