@@ -18,14 +18,67 @@ jobs:
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
-      - name: Generate lists and checksums
+      - name: Generate lists
         run: |
           chmod +x scripts/get.sh
           ./scripts/get.sh split
 
+      - name: Validate lists
+        shell: python
+        run: |
+          import ipaddress
+          import pathlib
+          import re
+          import subprocess
+
+          configs = {
+              "list-ipv4.rsc": (4, "NoNAT", 1000),
+              "list-ipv6.rsc": (6, "IRv6", 100),
+          }
+
+          pattern = re.compile(r"add address=([^ ]+) list=([^} ]+)")
+
+          for filename, (version, expected_list, minimum) in configs.items():
+              text = pathlib.Path(filename).read_text(encoding="utf-8")
+              entries = pattern.findall(text)
+
+              if len(entries) < minimum:
+                  raise SystemExit(f"{filename}: only {len(entries)} entries; minimum is {minimum}")
+
+              networks = []
+              for value, list_name in entries:
+                  if list_name != expected_list:
+                      raise SystemExit(f"{filename}: unexpected list name {list_name}")
+                  try:
+                      network = ipaddress.ip_network(value, strict=False)
+                  except ValueError as error:
+                      raise SystemExit(f"{filename}: invalid CIDR {value}: {error}")
+                  if network.version != version:
+                      raise SystemExit(f"{filename}: wrong IP family for {value}")
+                  networks.append(str(network))
+
+              if len(networks) != len(set(networks)):
+                  raise SystemExit(f"{filename}: duplicate networks detected")
+
+              try:
+                  old = subprocess.check_output(
+                      ["git", "show", f"HEAD:{filename}"], text=True
+                  )
+                  old_count = len(pattern.findall(old))
+              except subprocess.CalledProcessError:
+                  old_count = 0
+
+              if old_count and len(entries) < old_count * 0.8:
+                  raise SystemExit(
+                      f"{filename}: count dropped from {old_count} to {len(entries)}"
+                  )
+
+              print(f"{filename}: validated {len(entries)} unique networks")
+
+      - name: Generate and verify checksums
+        run: |
           sha256sum list-ipv4.rsc > list-ipv4-checksum.sha256
           sha256sum list-ipv6.rsc > list-ipv6-checksum.sha256
-
           sha256sum --check list-ipv4-checksum.sha256
           sha256sum --check list-ipv6-checksum.sha256
 
