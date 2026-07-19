@@ -7,69 +7,60 @@
     :local scriptSource ":local fileName \"iran-ipv4.rsc\"
 :local backupFile \"nonat-ipv4-backup-before-update.rsc\"
 :local url \"https://raw.githubusercontent.com/mohavise/Get-IP-Iran-evo/main/list-ipv4.rsc\"
-:local ipv4List \"NoNAT\"
+:local listName \"NoNAT\"
 :local minFileSize 1000
+:local minEntries 1000
 
-:if ([:len [/file find name=\$backupFile]] > 0) do={
-    /file remove \$backupFile
-}
-
-:do {
-    /ip firewall address-list export file=\$backupFile where list=\$ipv4List
-} on-error={
-    :log warning \"Iran IPv4 update: could not create backup file; stopping before update\"
-    :return
+:foreach file in={\$fileName;\$backupFile} do={
+    :if ([:len [/file find name=\$file]] > 0) do={ /file remove \$file }
 }
 
 :do {
     /tool fetch url=\$url dst-path=\$fileName mode=https
 } on-error={
-    :log warning \"Iran IPv4 update: download failed; keeping old address list\"
-    /file remove \$backupFile
+    :log warning \"Iran IPv4 update: download failed; old list kept\"
     :return
 }
 
-:delay 3
-
-:if ([:len [/file find name=\$fileName]] = 0) do={
-    :log warning \"Iran IPv4 update: downloaded file was not found; keeping old address list\"
-    /file remove \$backupFile
+:if (([:len [/file find name=\$fileName]] = 0) or ([/file get \$fileName size] < \$minFileSize)) do={
+    :log warning \"Iran IPv4 update: downloaded file is missing or too small\"
+    :if ([:len [/file find name=\$fileName]] > 0) do={ /file remove \$fileName }
     :return
 }
-
-:local fileSize [/file get \$fileName size]
-:if (\$fileSize < \$minFileSize) do={
-    :log warning \"Iran IPv4 update: downloaded file is too small or empty; keeping old address list\"
-    /file remove \$fileName
-    /file remove \$backupFile
-    :return
-}
-
-/ip firewall address-list remove [find list=\$ipv4List]
 
 :do {
-    /import file-name=\$fileName
+    /import file-name=\$fileName dry-run
 } on-error={
-    :log warning \"Iran IPv4 update: import failed; restoring old address list from backup file\"
-    /ip firewall address-list remove [find list=\$ipv4List]
-    /import file-name=\$backupFile
+    :log warning \"Iran IPv4 update: validation failed; old list kept\"
     /file remove \$fileName
-    /file remove \$backupFile
     :return
 }
 
-:if ([:len [/ip firewall address-list find list=\$ipv4List]] = 0) do={
-    :log warning \"Iran IPv4 update: new list has no NoNAT entries; restoring old address list from backup file\"
-    /ip firewall address-list remove [find list=\$ipv4List]
-    /import file-name=\$backupFile
+:do {
+    /ip firewall address-list export file=\$backupFile where list=\$listName
+} on-error={
+    :log warning \"Iran IPv4 update: backup failed; old list kept\"
     /file remove \$fileName
-    /file remove \$backupFile
     :return
+}
+
+:local updateOK true
+:do { /import file-name=\$fileName } on-error={ :set updateOK false }
+
+:if ([:len [/ip firewall address-list find list=\$listName]] < \$minEntries) do={
+    :set updateOK false
+}
+
+:if (\$updateOK = false) do={
+    /ip firewall address-list remove [find list=\$listName]
+    /import file-name=\$backupFile
+    :log warning \"Iran IPv4 update: import failed validation; old list restored\"
+} else={
+    :log info \"Iran IPv4 update: NoNAT updated successfully\"
 }
 
 /file remove \$fileName
-/file remove \$backupFile
-:log info \"Iran IPv4 update: NoNAT address list updated successfully\""
+/file remove \$backupFile"
 
     :if ([:len [/system script find name=$scriptName]] = 0) do={
         /system script add name=$scriptName dont-require-permissions=no policy=read,write,policy,test source=$scriptSource comment="managed-by=mohavise-mikrotik-iran-ip project=get-ip-iran-evo"
