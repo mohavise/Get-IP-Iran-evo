@@ -98,45 +98,41 @@ Medium/large-router scripts use a temporary export file.
 
 ## Recommended Safe Install
 
-Use only the installer matching your router and protocol.
+Use only the installer matching your router and protocol. The safe installer performs its own validation, so only one import command is needed.
 
 ### IPv4 — small router
 
 ```routeros
-/tool fetch url="https://raw.githubusercontent.com/mohavise/Get-IP-Iran-evo/main/safe-install-iran-ipv4-small-router.rsc" dst-path=safe-install-iran-ipv4-small-router.rsc check-certificate=yes-without-crl
-/import file-name=safe-install-iran-ipv4-small-router.rsc verbose=yes dry-run
-/import file-name=safe-install-iran-ipv4-small-router.rsc
-/file remove [find name=safe-install-iran-ipv4-small-router.rsc]
+/tool fetch url="https://raw.githubusercontent.com/mohavise/Get-IP-Iran-evo/main/safe-install-iran-ipv4-small-router.rsc" dst-path="safe-install-iran-ipv4-small-router.rsc" check-certificate=yes-without-crl
+/import file-name="safe-install-iran-ipv4-small-router.rsc"
+/file remove [find name="safe-install-iran-ipv4-small-router.rsc"]
 ```
 
 ### IPv4 — medium/large router
 
 ```routeros
-/tool fetch url="https://raw.githubusercontent.com/mohavise/Get-IP-Iran-evo/main/safe-install-iran-ipv4-medium-large-router.rsc" dst-path=safe-install-iran-ipv4-medium-large-router.rsc check-certificate=yes-without-crl
-/import file-name=safe-install-iran-ipv4-medium-large-router.rsc verbose=yes dry-run
-/import file-name=safe-install-iran-ipv4-medium-large-router.rsc
-/file remove [find name=safe-install-iran-ipv4-medium-large-router.rsc]
+/tool fetch url="https://raw.githubusercontent.com/mohavise/Get-IP-Iran-evo/main/safe-install-iran-ipv4-medium-large-router.rsc" dst-path="safe-install-iran-ipv4-medium-large-router.rsc" check-certificate=yes-without-crl
+/import file-name="safe-install-iran-ipv4-medium-large-router.rsc"
+/file remove [find name="safe-install-iran-ipv4-medium-large-router.rsc"]
 ```
 
 ### IPv6 — small router
 
 ```routeros
-/tool fetch url="https://raw.githubusercontent.com/mohavise/Get-IP-Iran-evo/main/safe-install-iran-ipv6-small-router.rsc" dst-path=safe-install-iran-ipv6-small-router.rsc check-certificate=yes-without-crl
-/import file-name=safe-install-iran-ipv6-small-router.rsc verbose=yes dry-run
-/import file-name=safe-install-iran-ipv6-small-router.rsc
-/file remove [find name=safe-install-iran-ipv6-small-router.rsc]
+/tool fetch url="https://raw.githubusercontent.com/mohavise/Get-IP-Iran-evo/main/safe-install-iran-ipv6-small-router.rsc" dst-path="safe-install-iran-ipv6-small-router.rsc" check-certificate=yes-without-crl
+/import file-name="safe-install-iran-ipv6-small-router.rsc"
+/file remove [find name="safe-install-iran-ipv6-small-router.rsc"]
 ```
 
 ### IPv6 — medium/large router
 
 ```routeros
-/tool fetch url="https://raw.githubusercontent.com/mohavise/Get-IP-Iran-evo/main/safe-install-iran-ipv6-medium-large-router.rsc" dst-path=safe-install-iran-ipv6-medium-large-router.rsc check-certificate=yes-without-crl
-/import file-name=safe-install-iran-ipv6-medium-large-router.rsc verbose=yes dry-run
-/import file-name=safe-install-iran-ipv6-medium-large-router.rsc
-/file remove [find name=safe-install-iran-ipv6-medium-large-router.rsc]
+/tool fetch url="https://raw.githubusercontent.com/mohavise/Get-IP-Iran-evo/main/safe-install-iran-ipv6-medium-large-router.rsc" dst-path="safe-install-iran-ipv6-medium-large-router.rsc" check-certificate=yes-without-crl
+/import file-name="safe-install-iran-ipv6-medium-large-router.rsc"
+/file remove [find name="safe-install-iran-ipv6-medium-large-router.rsc"]
 ```
 
-The safe installer validates and installs the matching updater and scheduler, removes temporary files, and runs the updater once.
+The safe installer validates and installs the matching updater and scheduler, removes its temporary files, and runs the updater once.
 
 ## Automatic Router Updates
 
