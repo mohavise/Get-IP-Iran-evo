@@ -6,74 +6,58 @@
     :local scriptName "update-iran-ipv6-small-router"
     :local scriptSource ":local fileName \"iran-ipv6.rsc\"
 :local url \"https://raw.githubusercontent.com/mohavise/Get-IP-Iran-evo/main/list-ipv6.rsc\"
-:local ipv6List \"IRv6\"
+:local listName \"IRv6\"
 :local backupList \"IRv6-backup-before-update\"
 :local minFileSize 1000
+:local minEntries 100
+
+:if ([:len [/file find name=\$fileName]] > 0) do={ /file remove \$fileName }
 
 :do {
     /tool fetch url=\$url dst-path=\$fileName mode=https
 } on-error={
-    :log warning \"Iran IPv6 update: download failed; keeping old address list\"
+    :log warning \"Iran IPv6 update: download failed; old list kept\"
     :return
 }
 
-:delay 3
-
-:if ([:len [/file find name=\$fileName]] = 0) do={
-    :log warning \"Iran IPv6 update: downloaded file was not found; keeping old address list\"
+:if (([:len [/file find name=\$fileName]] = 0) or ([/file get \$fileName size] < \$minFileSize)) do={
+    :log warning \"Iran IPv6 update: downloaded file is missing or too small\"
+    :if ([:len [/file find name=\$fileName]] > 0) do={ /file remove \$fileName }
     :return
 }
-
-:local fileSize [/file get \$fileName size]
-:if (\$fileSize < \$minFileSize) do={
-    :log warning \"Iran IPv6 update: downloaded file is too small or empty; keeping old address list\"
-    /file remove \$fileName
-    :return
-}
-
-/ipv6 firewall address-list remove [find list=\$backupList]
-:foreach item in=[/ipv6 firewall address-list find list=\$ipv6List] do={
-    :local address [/ipv6 firewall address-list get \$item address]
-    :do {
-        /ipv6 firewall address-list add list=\$backupList address=\$address
-    } on-error={}
-}
-
-/ipv6 firewall address-list remove [find list=\$ipv6List]
 
 :do {
-    /import file-name=\$fileName
+    /import file-name=\$fileName dry-run
 } on-error={
-    :log warning \"Iran IPv6 update: import failed; restoring old address list\"
-    /ipv6 firewall address-list remove [find list=\$ipv6List]
-    :foreach item in=[/ipv6 firewall address-list find list=\$backupList] do={
-        :local address [/ipv6 firewall address-list get \$item address]
-        :do {
-            /ipv6 firewall address-list add list=\$ipv6List address=\$address
-        } on-error={}
-    }
-    /ipv6 firewall address-list remove [find list=\$backupList]
-    /file remove \$fileName
-    :return
-}
-
-:if ([:len [/ipv6 firewall address-list find list=\$ipv6List]] = 0) do={
-    :log warning \"Iran IPv6 update: new list has no IRv6 entries; restoring old address list\"
-    /ipv6 firewall address-list remove [find list=\$ipv6List]
-    :foreach item in=[/ipv6 firewall address-list find list=\$backupList] do={
-        :local address [/ipv6 firewall address-list get \$item address]
-        :do {
-            /ipv6 firewall address-list add list=\$ipv6List address=\$address
-        } on-error={}
-    }
-    /ipv6 firewall address-list remove [find list=\$backupList]
+    :log warning \"Iran IPv6 update: validation failed; old list kept\"
     /file remove \$fileName
     :return
 }
 
 /ipv6 firewall address-list remove [find list=\$backupList]
-/file remove \$fileName
-:log info \"Iran IPv6 update: IRv6 address list updated successfully\""
+:foreach item in=[/ipv6 firewall address-list find list=\$listName] do={
+    /ipv6 firewall address-list add list=\$backupList address=[/ipv6 firewall address-list get \$item address]
+}
+
+:local updateOK true
+:do { /import file-name=\$fileName } on-error={ :set updateOK false }
+
+:if ([:len [/ipv6 firewall address-list find list=\$listName]] < \$minEntries) do={
+    :set updateOK false
+}
+
+:if (\$updateOK = false) do={
+    /ipv6 firewall address-list remove [find list=\$listName]
+    :foreach item in=[/ipv6 firewall address-list find list=\$backupList] do={
+        /ipv6 firewall address-list add list=\$listName address=[/ipv6 firewall address-list get \$item address]
+    }
+    :log warning \"Iran IPv6 update: import failed validation; old list restored\"
+} else={
+    :log info \"Iran IPv6 update: IRv6 updated successfully\"
+}
+
+/ipv6 firewall address-list remove [find list=\$backupList]
+/file remove \$fileName"
 
     :if ([:len [/system script find name=$scriptName]] = 0) do={
         /system script add name=$scriptName dont-require-permissions=no policy=read,write,policy,test source=$scriptSource comment="managed-by=mohavise-mikrotik-iran-ip project=get-ip-iran-evo"
