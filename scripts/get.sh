@@ -3,11 +3,13 @@
 set -eu
 
 url="https://stat.ripe.net/data/country-resource-list/data.json?resource=IR&v4_format=prefix"
+supplements="data/ipv4-supplements.txt"
 last=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
 json=$(mktemp)
 v4=$(mktemp)
 v6=$(mktemp)
-trap 'rm -f "$json" "$v4" "$v6"' EXIT
+v4_prefixes=$(mktemp)
+trap 'rm -f "$json" "$v4" "$v6" "$v4_prefixes"' EXIT
 
 curl --fail --silent --show-error --location --retry 3 "$url" > "$json"
 
@@ -21,14 +23,24 @@ jq -e '
 }
 
 make_v4() {
+  {
+    printf '%s\n' \
+      "5.160.0.0/16" \
+      "46.209.0.0/16" \
+      "77.104.64.0/18" \
+      "10.0.0.0/8"
+    jq -r '.data.resources.ipv4[]' "$json"
+    if [ -f "$supplements" ]; then
+      sed -e 's/[[:space:]]*#.*$//' -e '/^[[:space:]]*$/d' "$supplements"
+    fi
+  } | sort -u > "$v4_prefixes"
+
   echo "#Last update: $last"
   echo "/ip firewall address-list remove [/ip firewall address-list find list=NoNAT]"
   echo "/ip firewall address-list"
-  echo ":do { add address=5.160.0.0/16 list=NoNAT} on-error={}"
-  echo ":do { add address=46.209.0.0/16 list=NoNAT} on-error={}"
-  echo ":do { add address=77.104.64.0/18 list=NoNAT} on-error={}"
-  echo ":do { add address=10.0.0.0/8 list=NoNAT} on-error={}"
-  jq -r '.data.resources.ipv4[] | ":do { add address=\(.) list=NoNAT} on-error={}"' "$json"
+  while IFS= read -r prefix; do
+    echo ":do { add address=$prefix list=NoNAT} on-error={}"
+  done < "$v4_prefixes"
 }
 
 make_v6() {
