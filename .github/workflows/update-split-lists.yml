@@ -75,20 +75,12 @@ jobs:
 
               print(f"{filename}: validated {len(entries)} unique networks")
 
-      - name: Generate and verify checksums
-        run: |
-          sha256sum list-ipv4.rsc > list-ipv4-checksum.sha256
-          sha256sum list-ipv6.rsc > list-ipv6-checksum.sha256
-          sha256sum --check list-ipv4-checksum.sha256
-          sha256sum --check list-ipv6-checksum.sha256
-
       - name: Commit changes
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
-          git add list-ipv4.rsc list-ipv6.rsc \
-                  list-ipv4-checksum.sha256 list-ipv6-checksum.sha256
+          git add list-ipv4.rsc list-ipv6.rsc
 
           if git diff --cached --quiet; then
             echo "No changes"
