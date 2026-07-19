@@ -37,6 +37,7 @@ jobs:
           }
 
           pattern = re.compile(r"add address=([^ ]+) list=([^} ]+)")
+          generated = {}
 
           for filename, (version, expected_list, minimum) in configs.items():
               text = pathlib.Path(filename).read_text(encoding="utf-8")
@@ -60,6 +61,8 @@ jobs:
               if len(networks) != len(set(networks)):
                   raise SystemExit(f"{filename}: duplicate networks detected")
 
+              generated[filename] = set(networks)
+
               try:
                   old = subprocess.check_output(
                       ["git", "show", f"HEAD:{filename}"], text=True
@@ -74,6 +77,39 @@ jobs:
                   )
 
               print(f"{filename}: validated {len(entries)} unique networks")
+
+          supplement_path = pathlib.Path("data/ipv4-supplements.txt")
+          if supplement_path.exists():
+              supplements = []
+              for line_number, raw in enumerate(
+                  supplement_path.read_text(encoding="utf-8").splitlines(), start=1
+              ):
+                  value = raw.split("#", 1)[0].strip()
+                  if not value:
+                      continue
+                  try:
+                      network = ipaddress.ip_network(value, strict=True)
+                  except ValueError as error:
+                      raise SystemExit(
+                          f"{supplement_path}:{line_number}: invalid IPv4 CIDR {value}: {error}"
+                      )
+                  if network.version != 4:
+                      raise SystemExit(
+                          f"{supplement_path}:{line_number}: not an IPv4 network: {value}"
+                      )
+                  supplements.append(str(network))
+
+              if len(supplements) != len(set(supplements)):
+                  raise SystemExit(f"{supplement_path}: duplicate supplemental networks")
+
+              missing = sorted(set(supplements) - generated["list-ipv4.rsc"])
+              if missing:
+                  raise SystemExit(
+                      "Supplemental IPv4 networks missing from generated output: "
+                      + ", ".join(missing)
+                  )
+
+              print(f"{supplement_path}: validated {len(supplements)} supplemental networks")
 
       - name: Commit changes
         run: |
