@@ -16,7 +16,7 @@
     /tool fetch url=\$url dst-path=\$fileName check-certificate=yes-without-crl
 } on-error={
     :log warning \"Iran IPv6 update: download failed; old list kept\"
-    :return
+    :return \"\"
 }
 
 :do {
@@ -24,13 +24,18 @@
 } on-error={
     :log warning \"Iran IPv6 update: validation failed; old list kept\"
     /file remove \$fileName
-    :return
+    :return \"\"
 }
 
-/ipv6 firewall address-list remove [find list=\$backupList]
-:foreach item in=[/ipv6 firewall address-list find list=\$listName] do={
-    /ipv6 firewall address-list add list=\$backupList address=[/ipv6 firewall address-list get \$item address]
+:if ([:len [/ipv6 firewall address-list find list=\$backupList]] > 0) do={
+    :if ([:len [/ipv6 firewall address-list find list=\$listName]] = 0) do={
+        /ipv6 firewall address-list set [find list=\$backupList] list=\$listName
+    } else={
+        /ipv6 firewall address-list remove [find list=\$backupList]
+    }
 }
+
+/ipv6 firewall address-list set [find list=\$listName] list=\$backupList
 
 :local updateOK true
 :do { /import file-name=\$fileName } on-error={ :set updateOK false }
@@ -41,15 +46,13 @@
 
 :if (\$updateOK = false) do={
     /ipv6 firewall address-list remove [find list=\$listName]
-    :foreach item in=[/ipv6 firewall address-list find list=\$backupList] do={
-        /ipv6 firewall address-list add list=\$listName address=[/ipv6 firewall address-list get \$item address]
-    }
+    /ipv6 firewall address-list set [find list=\$backupList] list=\$listName
     :log warning \"Iran IPv6 update: import failed validation; old list restored\"
 } else={
+    /ipv6 firewall address-list remove [find list=\$backupList]
     :log info \"Iran IPv6 update: IRv6 updated successfully\"
 }
 
-/ipv6 firewall address-list remove [find list=\$backupList]
 /file remove \$fileName"
 
     :if ([:len [/system script find name=$scriptName]] = 0) do={

@@ -14,24 +14,24 @@
 
     :do { /tool fetch url=$updateUrl dst-path=$updateFile check-certificate=yes-without-crl } on-error={
         :log error "Iran IPv6 installer: updater download failed"
-        :return
+        :return ""
     }
     :do { /import file-name=$updateFile verbose=yes dry-run } on-error={
         :log error "Iran IPv6 installer: updater validation failed"
         /file remove $updateFile
-        :return
+        :return ""
     }
     /import file-name=$updateFile
     /file remove $updateFile
 
     :do { /tool fetch url=$schedulerUrl dst-path=$schedulerFile check-certificate=yes-without-crl } on-error={
         :log error "Iran IPv6 installer: scheduler download failed"
-        :return
+        :return ""
     }
     :do { /import file-name=$schedulerFile verbose=yes dry-run } on-error={
         :log error "Iran IPv6 installer: scheduler validation failed"
         /file remove $schedulerFile
-        :return
+        :return ""
     }
     /import file-name=$schedulerFile
     /file remove $schedulerFile

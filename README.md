@@ -87,21 +87,12 @@ The router does not repeat CIDR, duplicate, IP-family, or file-size validation.
 
 ### Small routers
 
-Small-router scripts keep the backup in a temporary address list.
+All updater variants keep the previous entries in a temporary address list. The active list is renamed before import, then restored if parsing or minimum-entry validation fails. This avoids duplicating thousands of entries and does not depend on filtered RouterOS exports.
 
-| Protocol | Updater | Backup list |
+| Protocol | Updaters | Temporary backup list |
 | --- | --- | --- |
-| IPv4 | `update-iran-ipv4-small-router.rsc` | `NoNAT-backup-before-update` |
-| IPv6 | `update-iran-ipv6-small-router.rsc` | `IRv6-backup-before-update` |
-
-### Medium and large routers
-
-Medium/large-router scripts use a temporary export file.
-
-| Protocol | Updater | Backup file |
-| --- | --- | --- |
-| IPv4 | `update-iran-ipv4-medium-large-router.rsc` | `nonat-ipv4-backup-before-update.rsc` |
-| IPv6 | `update-iran-ipv6-medium-large-router.rsc` | `irv6-backup-before-update.rsc` |
+| IPv4 | small and medium/large | `NoNAT-backup-before-update` |
+| IPv6 | small and medium/large | `IRv6-backup-before-update` |
 
 ## Recommended Safe Install
 

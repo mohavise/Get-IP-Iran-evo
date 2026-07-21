@@ -16,7 +16,7 @@
     /tool fetch url=\$url dst-path=\$fileName check-certificate=yes-without-crl
 } on-error={
     :log warning \"Iran IPv4 update: download failed; old list kept\"
-    :return
+    :return \"\"
 }
 
 :do {
@@ -24,13 +24,18 @@
 } on-error={
     :log warning \"Iran IPv4 update: validation failed; old list kept\"
     /file remove \$fileName
-    :return
+    :return \"\"
 }
 
-/ip firewall address-list remove [find list=\$backupList]
-:foreach item in=[/ip firewall address-list find list=\$listName] do={
-    /ip firewall address-list add list=\$backupList address=[/ip firewall address-list get \$item address]
+:if ([:len [/ip firewall address-list find list=\$backupList]] > 0) do={
+    :if ([:len [/ip firewall address-list find list=\$listName]] = 0) do={
+        /ip firewall address-list set [find list=\$backupList] list=\$listName
+    } else={
+        /ip firewall address-list remove [find list=\$backupList]
+    }
 }
+
+/ip firewall address-list set [find list=\$listName] list=\$backupList
 
 :local updateOK true
 :do { /import file-name=\$fileName } on-error={ :set updateOK false }
@@ -41,15 +46,13 @@
 
 :if (\$updateOK = false) do={
     /ip firewall address-list remove [find list=\$listName]
-    :foreach item in=[/ip firewall address-list find list=\$backupList] do={
-        /ip firewall address-list add list=\$listName address=[/ip firewall address-list get \$item address]
-    }
+    /ip firewall address-list set [find list=\$backupList] list=\$listName
     :log warning \"Iran IPv4 update: import failed validation; old list restored\"
 } else={
+    /ip firewall address-list remove [find list=\$backupList]
     :log info \"Iran IPv4 update: NoNAT updated successfully\"
 }
 
-/ip firewall address-list remove [find list=\$backupList]
 /file remove \$fileName"
 
     :if ([:len [/system script find name=$scriptName]] = 0) do={
