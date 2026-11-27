@@ -1,4 +1,4 @@
-#Last update: 2026-11-26 05:20:44 UTC
+#Last update: 2026-11-27 05:15:56 UTC
 /ipv6 firewall address-list remove [/ipv6 firewall address-list find list=IRv6]
 /ipv6 firewall address-list
 :do { add address=2001:678:b0::/46 list=IRv6} on-error={}
@@ -498,7 +498,6 @@
 :do { add address=2a13:9a00::/29 list=IRv6} on-error={}
 :do { add address=2a13:9dc0::/29 list=IRv6} on-error={}
 :do { add address=2a13:9e40::/29 list=IRv6} on-error={}
-:do { add address=2a13:a340::/29 list=IRv6} on-error={}
 :do { add address=2a13:bd80::/29 list=IRv6} on-error={}
 :do { add address=2a13:bf00::/29 list=IRv6} on-error={}
 :do { add address=2a13:c640::/29 list=IRv6} on-error={}
